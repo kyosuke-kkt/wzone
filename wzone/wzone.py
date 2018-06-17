@@ -1,7 +1,7 @@
 
 # python 2.7 default packages
 import os
-import pickle
+import cPickle as pickle
 import datetime
 import calendar
 import itertools
@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from sklearn import svm
 from sklearn import preprocessing
+
+import gzip_pickle
 
 # convert date string to numeric
 def numftime(d, format = '%Y-%m-%d'):
@@ -328,9 +330,8 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
         scaler_dict = pickle.load(f)
 
     # load estimates
-    osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_estimated_osvm.pkl')
-    with open(osvm_est_path, 'rb') as f:
-        osvm_est_dict = pickle.load(f)
+    osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_estimated_osvm.gzip')
+    osvm_est_dict = gzip_pickle.load(osvm_est_path)
 
     # load ged summary table
     ged_summary_path = pkg_resources.resource_filename('wzone', 'data/ged_summary.pkl')
