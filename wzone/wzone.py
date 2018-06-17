@@ -78,10 +78,10 @@ def find_ids(country = None, country_id = None, date_from = None, date_to = None
     :param country_id: An integer or a list of integers of country IDs. The country IDs must be consistent with those
                        in the UCDPGED. If specified, it returns conflict IDs that occurred in the corresponding
                        countries.
-    :param date_from: A string of dates in the format of YYYY-MM-DD (eg. 2000-01-01).
+    :param date_from: A string of a date in the format of YYYY-MM-DD (eg. 2000-01-01).
                       If specified, it returns conflict IDs whose last conflict event occurred after
                       the specified date.
-    :param date_to: A string of dates in the format of YYYY-MM-DD (eg. 2001-01-01).
+    :param date_to: A string of a date in the format of YYYY-MM-DD (eg. 2001-01-01).
                     If specified, it returns conflict IDs whose first conflict event occurred before
                     the specified date.
     :param type_of_violence: An integer or a list of integers of violence types. 1: state-based conflict, 2: non-state
@@ -175,43 +175,43 @@ def find_ids(country = None, country_id = None, date_from = None, date_to = None
 # check tuned parameter values
 def check_params(ids):
 
-        """
-        A function for querying the hyper-parameter values for given conflict IDs.
-        :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
-                    those in the UCDPGED.
+    """
+    A function for querying the hyper-parameter values for given conflict IDs.
+    :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
+                those in the UCDPGED.
 
-        :return: A list of lists in the form ``[[nu, gamma for the 1st ID], [nu, gamma for the 2nd ID], ...])``.
-        """
+    :return: A list of lists in the form ``[[nu, gamma for the 1st ID], [nu, gamma for the 2nd ID], ...])``.
+    """
 
-        # load ged summary table
-        ged_param_path = pkg_resources.resource_filename('wzone', 'data/ged_optimal_parameters.pkl')
-        with open(ged_param_path, 'rb') as f:
-            ged_param_df = pickle.load(f)
+    # load ged summary table
+    ged_param_path = pkg_resources.resource_filename('wzone', 'data/ged_optimal_parameters.pkl')
+    with open(ged_param_path, 'rb') as f:
+        ged_param_df = pickle.load(f)
 
-        # check the ids input
-        if isinstance(ids, int):
-            ids = [ids]
-        if isinstance(ids, list):
-            if not all([isinstance(i, int) for i in ids]):
-                ValueError('all elements in ids must be int.')
-        else:
-            TypeError('ids must be a string, int, or list.')
+    # check the ids input
+    if isinstance(ids, int):
+        ids = [ids]
+    if isinstance(ids, list):
+        if not all([isinstance(i, int) for i in ids]):
+            ValueError('all elements in ids must be int.')
+    else:
+        TypeError('ids must be a string, int, or list.')
 
-        # check if all IDs are valid
-        valid_ids = [i for i in ids if i in ged_param_df['id'].tolist()]
-        if len(valid_ids) == 0:
-            ValueError('Any of the specified IDs is in the UCDPGED.')
-        if len(valid_ids) < len(ids):
-            Warning('Some of the specified IDs do not exist in the UCDPGED. They are dropped: ' + \
-                    ', '.join([i for i in ids if i not in valid_ids]) + '.')
-            ids = valid_ids
+    # check if all IDs are valid
+    valid_ids = [i for i in ids if i in ged_param_df['id'].tolist()]
+    if len(valid_ids) == 0:
+        ValueError('Any of the specified IDs is in the UCDPGED.')
+    if len(valid_ids) < len(ids):
+        Warning('Some of the specified IDs do not exist in the UCDPGED. They are dropped: ' + \
+                ', '.join([i for i in ids if i not in valid_ids]) + '.')
+        ids = valid_ids
 
-        # select by the id
-        ged_param_df = ged_param_df.loc[ged_param_df['id'] in ids, :]
+    # select by the id
+    ged_param_df = ged_param_df.loc[ged_param_df['id'] in ids, :]
 
-        # return the remaining ids as a list
-        out_params = ged_param_df[['nu', 'gamma']].values.tolist()
-        return out_params
+    # return the remaining ids as a list
+    out_params = ged_param_df[['nu', 'gamma']].values.tolist()
+    return out_params
 
 # find the first and last dates
 def find_dates(ids, interval = None):
@@ -294,7 +294,7 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
                 cut = 0.025 gives the 95% lower bootstrapping bound of war zone estimates. cut = 0.975 gives the 95%
                 upper bootstrapping bound of war zone estimates.
 
-    :return: A list of paths to the output ESRI ASCII raster files.
+    :return: A list of paths at which the output ESRI ASCII raster files are saved.
     """
 
     ####################################################################################################################
