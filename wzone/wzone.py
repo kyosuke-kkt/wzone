@@ -206,7 +206,7 @@ def check_params(ids):
         ids = valid_ids
 
     # select by the id
-    ged_param_df = ged_param_df.loc[ged_param_df['id'] in ids, :]
+    ged_param_df = ged_param_df.loc[ged_param_df['id'].isin(ids), :]
 
     # return the remaining ids as a list
     out_params = ged_param_df[['nu', 'gamma']].values.tolist()

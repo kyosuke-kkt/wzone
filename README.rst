@@ -15,6 +15,7 @@ Install and update using `pip`_:
 .. code-block:: text
 
     pip install --index-url https://test.pypi.org/simple/ wzone
+    python -m unittest tests.test
 
 
 An Example
@@ -23,22 +24,25 @@ An Example
 .. code-block:: python
 
     from wzone import wzone
+    import tempfile
 
     # list of UCDPGED conflict IDs relevant to state-based violence in Somalia
-    somalia_ids = wzone.find_ids(country='Somalia', type_of_violence=1)
+    somalia_ids = wzone.find_ids(country='Somalia', type_of_violence=1)   ### [329, 337, 418, 13646]
 
     # Yearly sequence of dates from the first to the last events for each conflict
-    somalia_dates = wzone.find_dates(ids=somalia_ids, interval='year')
+    somalia_dates = wzone.find_dates(ids=somalia_ids, interval='year')   ### somalia_dates[1][0] == '1989-01-01'
 
-    # select the test case
-    test_ids = somalia_ids[1]       ### 337
-    test_dates = somalia_dates[1]   ### corresponding dates
+    # select a test case
+    test_id = 337
+    test_date = '2010-01-01'
 
-    # create war zones for the first conflict ID (only the first 5 years for the purpose of test)
-    somalia_paths = wzone.gen_wzones(dates=test_dates[0:4], ids=test_ids, out_dir='')
+    # create war zones for the first conflict ID (only the first year for the purpose of test)
+    tmp_dir = tempfile.mkdtemp()
+    somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)
+    print tmp_dir
 
-    # print the locations in which the war zone data are saved
-    print somalia_paths
+    # you can continue this example by using the output data.
+    ### For arcpy user, use arcpy.ASCIIToRaster_conversion function.
 
 Links
 -----
