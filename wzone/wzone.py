@@ -268,7 +268,7 @@ def find_dates(ids, interval = None):
     return out_list
 
 # wrapper for making a raster given conflict id and date
-def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
+def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5):
 
     """
     A function for creating conflict zones for given dates and conflict IDs.
@@ -277,9 +277,8 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
                 those in the UCDPGED.
     :param out_dir: A string of a path to an output folder. Conflict zones are saved in the specified directory
                     as the ESRI ASCII raster format.
-    :param res: A float that specifies the spatial resolution of the output rasters. While a smaller values produces
-                more precise zones, it also substantially slow downs the data generation. For a large amount of data,
-                0.5 or 1 is recommended. For a relatively small amount of data, 0.1 is recommended.
+    :param coarsen: Logical. If True, the output raster is coarsened to 1-degree-by-1-degree cells. If False, the
+                    spatial resolution of the output raster is 0.1 degree. Use this option to save your disk space.
     :param ensemble: Logical. If True, it uses bootstrapping ensemble. The ensemble slows down the data generation.
                      Recommended only if cut is not 0.5.
     :param cut: A float between 0.0 and 1.0. Valid only when ensemble = True. If equal or more than this proportion
@@ -339,10 +338,19 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
     ####################################################################################################################
     ### prediction
 
-    # create a mesh df
-    long_tmp = np.arange(-180, 180, res)
-    lat_tmp = np.arange(-90, 90, res)[::-1]
-    df = pd.DataFrame(list(itertools.product(long_tmp, lat_tmp)), columns=['long', 'lat'])
+    # create a fine-resolution mesh
+    resf = 0.1
+    longf = np.arange(-180, 180, resf)
+    latf = np.arange(-90, 90, resf)[::-1]
+    dff = pd.DataFrame(list(itertools.product(longf, latf)), columns=['long', 'lat'])
+    dff.reset_index(drop=True, inplace=True)
+
+    # create a coarse resolution mesh
+    resc = 1.0
+    longc = np.arange(-180, 180, resc)
+    latc = np.arange(-90, 90, resc)[::-1]
+    dfc = pd.DataFrame(list(itertools.product(longc, latc)), columns=['long', 'lat'])
+    dfc.reset_index(drop=True, inplace=True)
 
     # loop for each id
     txt_files = []
@@ -365,7 +373,12 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
         for date in dates:
 
             # temporary df
-            df_tmp = df.copy()
+            dff_tmp = dff.copy()
+            dfc_tmp = dfc.copy()
+
+            # if not ensemble
+            if (not ensemble) & isinstance(est_tmp, list):
+                est_tmp = [est_tmp[0]]
 
             # if date is not within a plausible range return
             if numftime(date) < numftime(first_date):
@@ -376,29 +389,56 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
                         str(date) + ' is later than the date of the last event (' + str(first_date) + ').')
 
             # add the date to df
-            df_tmp['date'] = numftime(date)
+            dfc_tmp.loc[:,'date'] = numftime(date)
+            dff_tmp.loc[:,'date'] = numftime(date)
 
             # scale the df
-            mat_tmp = scaler_tmp.transform(df_tmp.values)
+            matc_tmp = scaler_tmp.transform(dfc_tmp.values)
 
-            # if not ensemble
-            if (not ensemble) & isinstance(est_tmp, list):
-                est_tmp = est_tmp[0]
+            # first calculate decision values at a coarse level
+            decc_tmp = np.array(est_tmp[0].decision_function(matc_tmp))
+            posidx_tmp = np.where(decc_tmp >= 0)[0]
 
-            # episode-specific prediction
-            pred_tmp = osvm_ensemble(est_tmp, mat_tmp, cut=cut)
+            # if there is at least one y=1
+            if not coarsen:
+                if len(posidx_tmp) > 0:
 
-            # if all predictions are zero
-            if sum(pred_tmp) == 0:
+                    # get the spatial extent of possible positive cases
+                    min_tmp = dfc_tmp.loc[posidx_tmp, ['long', 'lat']].min(axis = 0)
+                    max_tmp = dfc_tmp.loc[posidx_tmp, ['long', 'lat']].max(axis = 0)
 
-                # make a zero matrix
-                pred_mat = np.zeros((len(lat_tmp), len(long_tmp)), order='F', dtype=int)
+                    #  divide the fine-resolution df to those of possible positive predictions
+                    dff_pos_tmp = dff_tmp.loc[dff_tmp['long'].between(min_tmp[0] - resc, max_tmp[0] + resc) & \
+                                              dff_tmp['lat'].between(min_tmp[1] - resc, max_tmp[1] + resc), :].copy()
 
-            # else
+                    # make a prediction at a finer level
+                    matf_pos_tmp = scaler_tmp.transform(dff_pos_tmp.values)
+                    predf_pos_tmp = osvm_ensemble(est_tmp, matf_pos_tmp, cut=cut)
+
+                    # merge the predicted values
+                    dff_pos_tmp.loc[:,'pred'] = predf_pos_tmp
+                    dff_tmp = pd.merge(dff_tmp, dff_pos_tmp, on = ['long', 'lat', 'date'], how='left')
+
+                    # fill na and convert it to np array
+                    dff_tmp.fillna(0, inplace=True)
+                    predf_tmp = dff_tmp['pred'].values
+
+                    # make a matrix of the predicted values
+                    pred_mat = np.reshape(predf_tmp, (len(latf), len(longf)), order='F')
+
+                # if there is no positive prediction, make a zero matrix
+                else:
+                    pred_mat = np.zeros((len(latf), len(longf)), order='F', dtype=int)
+
+            # if coarsen
             else:
 
-                # make a matrix of the predicted values
-                pred_mat = np.reshape(pred_tmp, (len(lat_tmp), len(long_tmp)), order='F')
+                # overwrite spatial information
+                longf, latf, resf = longc, latc, resc
+
+                # make a matrix
+                pred_tmp = 1*(decc_tmp >= 0)
+                pred_mat = np.reshape(pred_tmp, (len(latf), len(longf)), order='F')
 
             # delete a file if it exists
             txt_path = out_dir + '/' + str(uid) + '_' + str(date) + '.txt'
@@ -406,11 +446,11 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
                 os.remove(txt_path)
 
             # write the matrix as a esri ascii file
-            txt_header = 'ncols ' + str(len(long_tmp)) + '\n' + \
-                         'nrows ' + str(len(lat_tmp)) + '\n' + \
-                         'xllcenter ' + str(long_tmp[0]) + '\n' + \
-                         'yllcenter ' + str(lat_tmp[-1]) + '\n' + \
-                         'cellsize ' + str(res) + '\n' + \
+            txt_header = 'ncols ' + str(len(longf)) + '\n' + \
+                         'nrows ' + str(len(latf)) + '\n' + \
+                         'xllcenter ' + str(longf[0]) + '\n' + \
+                         'yllcenter ' + str(latf[-1]) + '\n' + \
+                         'cellsize ' + str(resf) + '\n' + \
                          'nodata_value -999' + '\n'
             np.savetxt(txt_path, pred_mat, fmt='%i', delimiter=' ', header=txt_header, comments='')
 
