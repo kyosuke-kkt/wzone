@@ -296,7 +296,7 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
     # check and format inputs
     dates = format(dates, str)
     ids = format(ids, int)
-    cut = format(cut, float)
+    cut = format(cut, float, make_list=False)
 
     # check cut
     if cut >= float(1):
