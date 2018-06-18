@@ -308,9 +308,16 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
     with open(scaler_path, 'rb') as f:
         scaler_dict = pickle.load(f)
 
-    # load estimates
-    osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_estimated_osvm.gzip')
-    osvm_est_dict = gzip_pickle.load(osvm_est_path)
+    # load a dictionary of estimates if ensemble
+    if ensemble:
+        osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_osvm_dict.gzip')
+        osvm_est_dict = gzip_pickle.load(osvm_est_path)
+
+    # load a light version
+    else:
+        osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_osvm_dict_light.pkl')
+        with open(osvm_est_path, 'rb') as f:
+            osvm_est_dict = pickle.load(f)
 
     # load ged summary table
     ged_summary_path = pkg_resources.resource_filename('wzone', 'data/ged_summary.pkl')
@@ -376,10 +383,6 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
             dff_tmp = dff.copy()
             dfc_tmp = dfc.copy()
 
-            # if not ensemble
-            if (not ensemble) & isinstance(est_tmp, list):
-                est_tmp = [est_tmp[0]]
-
             # if date is not within a plausible range return
             if numftime(date) < numftime(first_date):
                 Warning(str(uid) + ': ' + \
@@ -411,8 +414,10 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
                     dff_pos_tmp = dff_tmp.loc[dff_tmp['long'].between(min_tmp[0] - resc, max_tmp[0] + resc) & \
                                               dff_tmp['lat'].between(min_tmp[1] - resc, max_tmp[1] + resc), :].copy()
 
-                    # make a prediction at a finer level
+                    # scale the data
                     matf_pos_tmp = scaler_tmp.transform(dff_pos_tmp.values)
+
+                    # make a prediction at a finer level
                     predf_pos_tmp = osvm_ensemble(est_tmp, matf_pos_tmp, cut=cut)
 
                     # merge the predicted values
