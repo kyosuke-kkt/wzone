@@ -8,7 +8,7 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(name = 'wzone',
-      version = '0.1dev',
+      version = '0.1dev2',
       description = 'Package for making zones of civil wars.',
       long_description = readme,
       url='http://github.com/kyosuke-kkt/wzone',
@@ -16,7 +16,7 @@ setup(name = 'wzone',
       author_email='kyosuke.kkt@outlook.com',
       license=license,
       packages=['wzone'],
-      package_data={'wzone': ['data/*.pkl', 'data/*.zip']},
+      package_data={'wzone': ['data/*.pkl', 'data/*.gzip']},
       zip_safe=False,
       python_requires='>=2.7',
       install_requires=['numpy>=1.11.3', 'pandas>=0.18.1', 'sklearn>=0.0'],

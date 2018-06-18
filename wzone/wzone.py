@@ -24,6 +24,34 @@ def numftime(d, format = '%Y-%m-%d'):
 
     return timestamp
 
+# check data types
+def format(data, dtype, make_list = True):
+
+    # if d is not none
+    if data is not None:
+
+        # if d belongs to a specified type, make it as a list
+        if np.issubdtype(type(data), dtype):
+            data = [data]
+
+        # if data is not dtype or a list, return error
+        if not np.issubdtype(type(data), list):
+            TypeError('data must be ' + str(type(dtype).__name__) + ' or its list.')
+
+        # all elements in the list must belong to dtype
+        if not all([np.issubdtype(type(d), dtype) for d in data]):
+            ValueError('all elements in data must be ' + str(type(dtype).__name__) + '.')
+
+        # make it sure that they have python default types (not those in numpy)
+        else:
+            data = [dtype(d) for d in data]
+
+        # finally unlist if make_list is False
+        if (not make_list) & len(data) == 1:
+            data = data[0]
+
+    return data
+
 # make a prediction based on the outcome of ensemble_osvm
 def osvm_ensemble(osvm_list, mat, cut = 0.5):
 
@@ -101,36 +129,13 @@ def find_ids(country = None, country_id = None, date_from = None, date_to = None
     with open(ged_summary_path, 'rb') as f:
         ged_sum_df = pickle.load(f)
 
-    # check types
-    if country is not None:
-        if country is not list:
-            country = [country]
-        if not all([isinstance(c, str) for c in country]):
-            ValueError('all elements in country must be string.')
-
-    if country_id is not None:
-        if country_id is not list:
-            country_id = [country_id]
-        if not all([isinstance(c, int) for c in country_id]):
-            ValueError('all elements in country_id must be int.')
-
-    if date_from is not None:
-        if not isinstance(date_from, str):
-            ValueError('date_from must be a string.')
-
-    if date_to is not None:
-        if not isinstance(date_to, str):
-            ValueError('date_to must be a string.')
-
-    if type_of_violence is not None:
-        if type_of_violence is not list:
-            type_of_violence = [type_of_violence]
-        if not all([isinstance(v, int) for v in type_of_violence]):
-            ValueError('all elements in violence_type must be int.')
-
-    if min_nobs is not None:
-        if min_nobs is not int:
-            ValueError('min_nobs must be int.')
+    # check and format data types
+    country = format(country, str)
+    country_id = format(country_id, int)
+    date_from = format(date_from, str, make_list=False)
+    date_to = format(date_to, str, make_list=False)
+    type_of_violence = format(type_of_violence, int)
+    min_nobs = format(min_nobs, int, make_list=False)
 
     # drop non-estimated
     if estimated_only:
@@ -188,14 +193,8 @@ def check_params(ids):
     with open(ged_param_path, 'rb') as f:
         ged_param_df = pickle.load(f)
 
-    # check the ids input
-    if isinstance(ids, int):
-        ids = [ids]
-    if isinstance(ids, list):
-        if not all([isinstance(i, int) for i in ids]):
-            ValueError('all elements in ids must be int.')
-    else:
-        TypeError('ids must be a string, int, or list.')
+    # check and format the ids input
+    ids = format(ids, int)
 
     # check if all IDs are valid
     valid_ids = [i for i in ids if i in ged_param_df['id'].tolist()]
@@ -233,14 +232,8 @@ def find_dates(ids, interval = None):
     with open(ged_summary_path, 'rb') as f:
         ged_sum_df = pickle.load(f)
 
-    # check the ids input
-    if isinstance(ids, int):
-        ids = [ids]
-    if isinstance(ids, list):
-        if not all([isinstance(i, int) for i in ids]):
-            ValueError('all elements in ids must be int.')
-    else:
-        TypeError('ids must be a string, int, or list.')
+    # check and format the ids input
+    ids = format(ids, int)
 
     # get a array of first and last dates
     date_list = ged_sum_df.loc[ged_sum_df['id'].isin(ids), ['date_start', 'date_end']].values.tolist()
@@ -300,23 +293,10 @@ def gen_wzones(dates, ids, out_dir, res = 0.2, ensemble = False, cut = 0.5):
     ####################################################################################################################
     ### error checks
 
-    # check the dates input
-    if isinstance(dates, str):
-        dates = [dates]
-    if isinstance(dates, list):
-        if not all([isinstance(d, str) for d in dates]):
-            ValueError('all elements in dates must be string.')
-    else:
-        TypeError('dates must be a string or list.')
-
-    # check the ids input
-    if isinstance(ids, int):
-        ids = [ids]
-    if isinstance(ids, list):
-        if not all([isinstance(i, int) for i in ids]):
-            ValueError('all elements in ids must be string or int.')
-    else:
-        TypeError('ids must be a string, int, or list.')
+    # check and format inputs
+    dates = format(dates, str)
+    ids = format(ids, int)
+    cut = format(cut, float)
 
     # check cut
     if cut >= float(1):
