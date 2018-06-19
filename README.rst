@@ -3,7 +3,7 @@ Wzone
 
 Wzone is a package for generating zones of armed conflicts. The package contains functionalities 
 for querying and creating conflict zones in the `ESRI ASCII raster format`_. The methodological details
-can be found `here`_. The package greatly relies on the UCDPGED (version 17.1) compiled by
+can be found `here`_ (TBD). The package greatly relies on the UCDPGED (version 17.1) compiled by
 the `Uppsala Conflict Data Program`_.
 
 
