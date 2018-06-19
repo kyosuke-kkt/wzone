@@ -31,20 +31,15 @@ def format(data, dtype, make_list = True):
     if data is not None:
 
         # if d belongs to a specified type, make it as a list
-        if np.issubdtype(type(data), dtype):
+        if not np.issubsctype(type(data), list):
             data = [data]
 
         # if data is not dtype or a list, return error
-        if not np.issubdtype(type(data), list):
+        if not np.issubsctype(type(data), list):
             TypeError('data must be ' + str(type(dtype).__name__) + ' or its list.')
 
-        # all elements in the list must belong to dtype
-        if not all([np.issubdtype(type(d), dtype) for d in data]):
-            ValueError('all elements in data must be ' + str(type(dtype).__name__) + '.')
-
-        # make it sure that they have python default types (not those in numpy)
-        else:
-            data = [dtype(d) for d in data]
+        # format
+        data = [dtype(d) for d in data]
 
         # finally unlist if make_list is False
         if (not make_list) & len(data) == 1:
@@ -304,7 +299,8 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
         upper bootstrapping bound of war zone estimates.
 
     :return: A list of paths at which the output ESRI ASCII raster files are saved.
-        An output raster has a spatial resolution of 0.1 degree (approximately 11 kilometers).
+        An output raster has a spatial resolution of 0.1 degree (approximately 11 kilometers). Cell value 1 indicates
+        a conflict zone.
     """
 
     ####################################################################################################################

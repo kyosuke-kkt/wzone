@@ -36,7 +36,7 @@ An Example
     test_id = 337
     test_date = '2010-01-01'
 
-    # create war zones for the first conflict ID (only the first year for the purpose of test)
+    # create war zones
     tmp_dir = tempfile.mkdtemp()
     somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)
     print tmp_dir
