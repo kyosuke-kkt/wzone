@@ -43,7 +43,7 @@ class Testgen_wzones(unittest.TestCase):
 
         # create war zones
         tmp_dir = tempfile.mkdtemp()
-        somalia_path = wzone.gen_wzones(dates=test_dates, ids=test_id, out_dir=tmp_dir)
+        somalia_path = wzone.gen_wzones(dates=test_dates, ids=test_id, out_dir=tmp_dir, save_novalue_raster=True)
 
         # check the number of positive predictions
         somalia_mat = np.loadtxt(somalia_path[0], skiprows=6, delimiter=' ', comments='')

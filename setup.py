@@ -9,7 +9,7 @@ with open('LICENSE') as f:
 
 setup(name = 'wzone',
       version = '0.1dev2',
-      description = 'Package for making zones of civil wars.',
+      description = 'Package for making zones of armed conflicts.',
       long_description = readme,
       url='http://github.com/kyosuke-kkt/wzone',
       author='Kyosuke Kikuta',

@@ -41,14 +41,15 @@ An Example
     somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)
     print tmp_dir
 
-    # you can continue this example by using the output data.
-    ### For arcpy user, use arcpy.ASCIIToRaster_conversion function.
+    # You can continue this example with a variety of functions in other GIS packages.
+    ### For arcpy users, refer to arcpy.ASCIIToRaster_conversion function.
+    ### For gdal users, refer to gdal.Open function.
 
 Links
 -----
 
 * Website: https://github.com/kyosuke-kkt/wzone/
-* License: `MIT <https://github.com/kyosuke_kkt/wzone/LICENSE>`_
+* License: `MIT <https://github.com/kyosuke-kkt/wzone/LICENSE>`_
 * Releases: https://pypi.org/project/wzone/
 
 .. _ESRI ASCII raster format: \

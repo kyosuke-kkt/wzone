@@ -52,6 +52,22 @@ def format(data, dtype, make_list = True):
 
     return data
 
+# write ESRI ASCII file
+def write_asc(array, out_path, ncols, nrows, xllcenter, yllcenter, cellsize, nodata_value = -999, fmt = '%i'):
+
+    # delete a file if it exists
+    if os.path.exists(out_path):
+        os.remove(out_path)
+
+    # write the matrix as a esri ascii file
+    txt_header = 'ncols ' + str(ncols) + '\n' + \
+                 'nrows ' + str(nrows) + '\n' + \
+                 'xllcenter ' + str(xllcenter) + '\n' + \
+                 'yllcenter ' + str(yllcenter) + '\n' + \
+                 'cellsize ' + str(cellsize) + '\n' + \
+                 'nodata_value ' + str(nodata_value) + '\n'
+    np.savetxt(out_path, array, fmt=fmt, delimiter=' ', header=txt_header, comments='')
+
 # make a prediction based on the outcome of ensemble_osvm
 def osvm_ensemble(osvm_list, mat, cut = 0.5):
 
@@ -268,25 +284,27 @@ def find_dates(ids, interval = None):
     return out_list
 
 # wrapper for making a raster given conflict id and date
-def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5):
+def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = False, cut = 0.5):
 
     """
     A function for creating conflict zones for given dates and conflict IDs.
     :param dates: A string or a list of strings of dates in the format of YYYY-MM-DD (eg. 2000-01-01).
     :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
-                those in the UCDPGED.
+        those in the UCDPGED.
     :param out_dir: A string of a path to an output folder. Conflict zones are saved in the specified directory
-                    as the ESRI ASCII raster format.
-    :param coarsen: Logical. If True, the output raster is coarsened to 1-degree-by-1-degree cells. If False, the
-                    spatial resolution of the output raster is 0.1 degree. Use this option to save your disk space.
+        as the ESRI ASCII raster format.
+    :param save_novalue_raster: Logical. If False, no raster outputs are saved when there is no conflict zone.
+        If True, zero-valued raster files (3600-by-1800) are created and saved when there is no conflict zone.
+        Use this option sparingly as the zero-valued raster files are large and slow down the process.
     :param ensemble: Logical. If True, it uses bootstrapping ensemble. The ensemble slows down the data generation.
-                     Recommended only if cut is not 0.5.
+        Recommended only if cut is not 0.5.
     :param cut: A float between 0.0 and 1.0. Valid only when ensemble = True. If equal or more than this proportion
-                of bootstrapped models make positive predictions, the location is considered as a part of a war zone.
-                cut = 0.025 gives the 95% lower bootstrapping bound of war zone estimates. cut = 0.975 gives the 95%
-                upper bootstrapping bound of war zone estimates.
+        of bootstrapped models make positive predictions, the location is considered as a part of a war zone.
+        cut = 0.025 gives the 95% lower bootstrapping bound of war zone estimates. cut = 0.975 gives the 95%
+        upper bootstrapping bound of war zone estimates.
 
     :return: A list of paths at which the output ESRI ASCII raster files are saved.
+        An output raster has a spatial resolution of 0.1 degree (approximately 11 kilometers).
     """
 
     ####################################################################################################################
@@ -349,15 +367,13 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
     resf = 0.1
     longf = np.arange(-180, 180, resf)
     latf = np.arange(-90, 90, resf)[::-1]
-    dff = pd.DataFrame(list(itertools.product(longf, latf)), columns=['long', 'lat'])
-    dff.reset_index(drop=True, inplace=True)
+    matf = np.array(list(itertools.product(longf, latf)))
 
     # create a coarse resolution mesh
     resc = 1.0
     longc = np.arange(-180, 180, resc)
     latc = np.arange(-90, 90, resc)[::-1]
-    dfc = pd.DataFrame(list(itertools.product(longc, latc)), columns=['long', 'lat'])
-    dfc.reset_index(drop=True, inplace=True)
+    matc = np.array(list(itertools.product(longc, latc)))
 
     # loop for each id
     txt_files = []
@@ -379,10 +395,6 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
         # loop for each day
         for date in dates:
 
-            # temporary df
-            dff_tmp = dff.copy()
-            dfc_tmp = dfc.copy()
-
             # if date is not within a plausible range return
             if numftime(date) < numftime(first_date):
                 Warning(str(uid) + ': ' + \
@@ -392,75 +404,68 @@ def gen_wzones(dates, ids, out_dir, coarsen = False, ensemble = False, cut = 0.5
                         str(date) + ' is later than the date of the last event (' + str(first_date) + ').')
 
             # add the date to df
-            dfc_tmp.loc[:,'date'] = numftime(date)
-            dff_tmp.loc[:,'date'] = numftime(date)
+            matc_tmp = np.column_stack((matc, np.full((matc.shape[0], 1), numftime(date), int)))
+            matf_tmp = np.column_stack((matf, np.full((matf.shape[0], 1), numftime(date), int)))
 
             # scale the df
-            matc_tmp = scaler_tmp.transform(dfc_tmp.values)
+            matc_scaled_tmp = scaler_tmp.transform(matc_tmp)
 
             # first calculate decision values at a coarse level
-            decc_tmp = np.array(est_tmp[0].decision_function(matc_tmp))
-            posidx_tmp = np.where(decc_tmp >= 0)[0]
+            predc_tmp = osvm_ensemble(est_tmp[0], matc_scaled_tmp, cut=cut)
+            idxc_tmp = np.where(predc_tmp == 1)[0]
+
+            # specify the output path
+            txt_path = out_dir + '/' + str(uid) + '_' + str(date) + '.asc'
 
             # if there is at least one y=1
-            if not coarsen:
-                if len(posidx_tmp) > 0:
+            if len(idxc_tmp) > 0:
 
-                    # get the spatial extent of possible positive cases
-                    min_tmp = dfc_tmp.loc[posidx_tmp, ['long', 'lat']].min(axis = 0)
-                    max_tmp = dfc_tmp.loc[posidx_tmp, ['long', 'lat']].max(axis = 0)
+                # get the spatial extent of possible positive cases
+                min_tmp = matc_tmp[idxc_tmp, 0:2].min(axis = 0) - resc
+                max_tmp = matc_tmp[idxc_tmp, 0:2].max(axis = 0) + resc
 
-                    #  divide the fine-resolution df to those of possible positive predictions
-                    dff_pos_tmp = dff_tmp.loc[dff_tmp['long'].between(min_tmp[0] - resc, max_tmp[0] + resc) & \
-                                              dff_tmp['lat'].between(min_tmp[1] - resc, max_tmp[1] + resc), :].copy()
+                #  divide the fine-resolution df to those of possible positive predictions
+                idxf_tmp = (min_tmp[0] <= matf_tmp[:,0]) & (matf_tmp[:,0] <= max_tmp[0]) & \
+                           (min_tmp[1] <= matf_tmp[:,1]) & (matf_tmp[:,1] <= max_tmp[1])
+                matf_pos_tmp = matf_tmp[idxf_tmp,:]
 
-                    # scale the data
-                    matf_pos_tmp = scaler_tmp.transform(dff_pos_tmp.values)
+                # scale the data
+                matf_scaled_tmp = scaler_tmp.transform(matf_pos_tmp)
 
-                    # make a prediction at a finer level
-                    predf_pos_tmp = osvm_ensemble(est_tmp, matf_pos_tmp, cut=cut)
+                # make a prediction at a finer level
+                predf_pos_tmp = osvm_ensemble(est_tmp, matf_scaled_tmp, cut=cut)
 
-                    # merge the predicted values
-                    dff_pos_tmp.loc[:,'pred'] = predf_pos_tmp
-                    dff_tmp = pd.merge(dff_tmp, dff_pos_tmp, on = ['long', 'lat', 'date'], how='left')
+                # make a matrix of the predicted values
+                ncols_tmp = (max_tmp[0] - min_tmp[0]) / resf
+                nrows_tmp = (max_tmp[1] - min_tmp[1]) / resf
+                pred_mat = np.reshape(predf_pos_tmp, (int(nrows_tmp), int(ncols_tmp)), order='F')
 
-                    # fill na and convert it to np array
-                    dff_tmp.fillna(0, inplace=True)
-                    predf_tmp = dff_tmp['pred'].values
+                # write an ascii file
+                write_asc(pred_mat, txt_path,
+                          ncols = ncols_tmp,
+                          nrows = nrows_tmp,
+                          xllcenter = min_tmp[0],
+                          yllcenter = min_tmp[1],
+                          cellsize = resf)
+                txt_files.append(txt_path)
 
-                    # make a matrix of the predicted values
-                    pred_mat = np.reshape(predf_tmp, (len(latf), len(longf)), order='F')
-
-                # if there is no positive prediction, make a zero matrix
-                else:
-                    pred_mat = np.zeros((len(latf), len(longf)), order='F', dtype=int)
-
-            # if coarsen
+            # if there is no positive prediction
             else:
 
-                # overwrite spatial information
-                longf, latf, resf = longc, latc, resc
+                # if save no value raster
+                if save_novalue_raster:
 
-                # make a matrix
-                pred_tmp = 1*(decc_tmp >= 0)
-                pred_mat = np.reshape(pred_tmp, (len(latf), len(longf)), order='F')
+                    # zero matrix
+                    pred_mat = np.zeros((len(latf), len(longf)), order='F', dtype=int)
 
-            # delete a file if it exists
-            txt_path = out_dir + '/' + str(uid) + '_' + str(date) + '.txt'
-            if os.path.exists(txt_path):
-                os.remove(txt_path)
-
-            # write the matrix as a esri ascii file
-            txt_header = 'ncols ' + str(len(longf)) + '\n' + \
-                         'nrows ' + str(len(latf)) + '\n' + \
-                         'xllcenter ' + str(longf[0]) + '\n' + \
-                         'yllcenter ' + str(latf[-1]) + '\n' + \
-                         'cellsize ' + str(resf) + '\n' + \
-                         'nodata_value -999' + '\n'
-            np.savetxt(txt_path, pred_mat, fmt='%i', delimiter=' ', header=txt_header, comments='')
-
-            # add the text path
-            txt_files.append(txt_path)
+                    # save it
+                    write_asc(pred_mat, txt_path,
+                              ncols = 360 / resf,
+                              nrows = 180/ resf,
+                              xllcenter = -180,
+                              yllcenter = -90,
+                              cellsize = resf)
+                    txt_files.append(txt_path)
 
     # return the list of file paths
     return txt_files
