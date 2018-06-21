@@ -4,17 +4,15 @@ from setuptools import setup
 with open('README.rst') as f:
     readme = f.read()
 
-with open('LICENSE') as f:
-    license = f.read()
-
 setup(name = 'wzone',
-      version = '0.1.1',
+      version = '0.1.3',
       description = 'Package for making zones of armed conflicts.',
       long_description = readme,
+      long_description_content_type = 'text/x-rst',
       url='http://github.com/kyosuke-kkt/wzone',
       author='Kyosuke Kikuta',
       author_email='kyosuke.kkt@outlook.com',
-      license=license,
+      license='MIT',
       packages=['wzone'],
       package_data={'wzone': ['data/*.pkl',
                               'data/w_date/*.pkl', 'data/w_date/*.gzip',
