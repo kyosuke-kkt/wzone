@@ -327,7 +327,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     if dates is not None:
         data_dir = 'data/w_date/'
     else:
-        data_dir = 'data/wo_date'
+        data_dir = 'data/wo_date/'
         dates = [dates]
 
     # load scaler
@@ -419,6 +419,11 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
                 matc_tmp = np.column_stack((matc, np.full((matc.shape[0], 1), numftime(date), int)))
                 matf_tmp = np.column_stack((matf, np.full((matf.shape[0], 1), numftime(date), int)))
 
+            # if no date, no need to add date variable
+            else:
+                matc_tmp = matc.copy()
+                matf_tmp = matf.copy()
+
             # scale the df
             matc_scaled_tmp = scaler_tmp.transform(matc_tmp)
 
@@ -433,8 +438,8 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
             if len(idxc_tmp) > 0:
 
                 # get the spatial extent of possible positive cases
-                min_tmp = matc_tmp[idxc_tmp, 0:2].min(axis = 0) - resc
-                max_tmp = matc_tmp[idxc_tmp, 0:2].max(axis = 0) + resc
+                min_tmp = matc_tmp[idxc_tmp, 0:2].min(axis = 0) - 3*resc
+                max_tmp = matc_tmp[idxc_tmp, 0:2].max(axis = 0) + 3*resc
 
                 #  divide the fine-resolution df to those of possible positive predictions
                 idxf_tmp = (min_tmp[0] <= matf_tmp[:,0]) & (matf_tmp[:,0] <= max_tmp[0]) & \

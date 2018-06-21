@@ -8,7 +8,7 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(name = 'wzone',
-      version = '0.1dev2',
+      version = '0.1dev3',
       description = 'Package for making zones of armed conflicts.',
       long_description = readme,
       url='http://github.com/kyosuke-kkt/wzone',

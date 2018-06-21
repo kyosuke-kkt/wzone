@@ -23,9 +23,9 @@ somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir='C:/Users/
 cProfile.run('wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)', sort='tottime')
 
 # read and count the number of cells within conflict zones
-somalia_mat = np.loadtxt(somalia_path[0], skiprows=6, delimiter=' ', comments='')
-print somalia_mat.shape   ### (1800, 3600)
-print somalia_mat.sum()   ### 1986
+somalia_mat = np.loadtxt(somalia_path[2], skiprows=6, delimiter=' ', comments='')
+print somalia_mat.shape
+print somalia_mat.sum()
 
 # remove the temporary directory
 del somalia_mat
