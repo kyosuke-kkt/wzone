@@ -14,8 +14,7 @@ Install and update using `pip`_:
 
 .. code-block:: text
 
-    pip install --index-url https://test.pypi.org/simple/ wzone
-    python -m unittest tests.test
+    pip install wzone
 
 
 An Example

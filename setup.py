@@ -8,7 +8,7 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(name = 'wzone',
-      version = '0.1dev3',
+      version = '0.1.1',
       description = 'Package for making zones of armed conflicts.',
       long_description = readme,
       url='http://github.com/kyosuke-kkt/wzone',
@@ -22,7 +22,6 @@ setup(name = 'wzone',
       zip_safe=False,
       python_requires='>=2.7',
       install_requires=['numpy>=1.11.3', 'pandas>=0.18.1', 'sklearn>=0.0'],
-      test_suite='wzone.tests',
       classifiers=['Development Status :: 3 - Alpha',
                    'Environment :: Console',
                    'Intended Audience :: End Users/Desktop',
