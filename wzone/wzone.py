@@ -305,8 +305,9 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
         upper bootstrapping bound of war zone estimates.
 
     :return: A list of paths at which the output ESRI ASCII raster files are saved.
-        An output raster has a spatial resolution of 0.1 degree (approximately 11 kilometers). Cell value 1 indicates
-        a conflict zone.
+        The output file names are in a format of '[ConflictID]_[Date].asc'.
+        An output raster has a spatial resolution of 0.1 degree (approximately 11 kilometers).
+        Cell value 1 indicates a conflict zone, and the rest of the areas are non-conflict zones.
     """
 
     ####################################################################################################################
@@ -372,13 +373,8 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     ####################################################################################################################
     ### prediction
 
-    # create a fine-resolution mesh
-    resf = 0.1
-    longf = np.arange(-180, 180, resf)
-    latf = np.arange(-90, 90, resf)[::-1]
-    matf = np.array(list(itertools.product(longf, latf)))
-
     # create a coarse resolution mesh
+    resf = 0.1
     resc = 1.0
     longc = np.arange(-180, 180, resc)
     latc = np.arange(-90, 90, resc)[::-1]
@@ -417,12 +413,10 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
 
                 # add the date to df
                 matc_tmp = np.column_stack((matc, np.full((matc.shape[0], 1), numftime(date), int)))
-                matf_tmp = np.column_stack((matf, np.full((matf.shape[0], 1), numftime(date), int)))
 
             # if no date, no need to add date variable
             else:
                 matc_tmp = matc.copy()
-                matf_tmp = matf.copy()
 
             # scale the df
             matc_scaled_tmp = scaler_tmp.transform(matc_tmp)
@@ -441,21 +435,25 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
                 min_tmp = matc_tmp[idxc_tmp, 0:2].min(axis = 0) - 3*resc
                 max_tmp = matc_tmp[idxc_tmp, 0:2].max(axis = 0) + 3*resc
 
-                #  divide the fine-resolution df to those of possible positive predictions
-                idxf_tmp = (min_tmp[0] <= matf_tmp[:,0]) & (matf_tmp[:,0] <= max_tmp[0]) & \
-                           (min_tmp[1] <= matf_tmp[:,1]) & (matf_tmp[:,1] <= max_tmp[1])
-                matf_pos_tmp = matf_tmp[idxf_tmp,:]
+                # create a high-resolution matrix
+                longf_tmp = np.arange(min_tmp[0], max_tmp[0], resf)
+                latf_tmp = np.arange(min_tmp[1], max_tmp[1], resf)[::-1]
+                matf_tmp = np.array(list(itertools.product(longf_tmp, latf_tmp)))
+
+                # add date if date is specified
+                if date is not None:
+                    matf_tmp = np.column_stack((matf_tmp, np.full((matf_tmp.shape[0], 1), numftime(date), int)))
 
                 # scale the data
-                matf_scaled_tmp = scaler_tmp.transform(matf_pos_tmp)
+                matf_scaled_tmp = scaler_tmp.transform(matf_tmp)
 
                 # make a prediction at a finer level
-                predf_pos_tmp = osvm_ensemble(est_tmp, matf_scaled_tmp, cut=cut)
+                predf_tmp = osvm_ensemble(est_tmp, matf_scaled_tmp, cut=cut)
 
                 # make a matrix of the predicted values
-                ncols_tmp = (max_tmp[0] - min_tmp[0]) / resf
-                nrows_tmp = (max_tmp[1] - min_tmp[1]) / resf
-                pred_mat = np.reshape(predf_pos_tmp, (int(nrows_tmp), int(ncols_tmp)), order='F')
+                ncols_tmp = len(longf_tmp)
+                nrows_tmp = len(latf_tmp)
+                pred_mat = np.reshape(predf_tmp, (int(nrows_tmp), int(ncols_tmp)), order='F')
 
                 # write an ascii file
                 write_asc(pred_mat, txt_path,
@@ -473,7 +471,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
                 if save_novalue_raster:
 
                     # zero matrix
-                    pred_mat = np.zeros((len(latf), len(longf)), order='F', dtype=int)
+                    pred_mat = np.zeros((int(180*resf), int(360*resf)), order='F', dtype=int)
 
                     # save it
                     write_asc(pred_mat, txt_path,

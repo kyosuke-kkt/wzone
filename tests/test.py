@@ -1,4 +1,6 @@
 
+# A light module for testing
+
 import unittest
 import tempfile
 import shutil
