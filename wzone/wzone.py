@@ -189,18 +189,23 @@ def find_ids(country = None, country_id = None, date_from = None, date_to = None
         return out_ids
 
 # check tuned parameter values
-def check_params(ids):
+def check_params(ids, with_date = True):
 
     """
     A function for querying the hyper-parameter values for given conflict IDs.
     :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
-                those in the UCDPGED.
+        those in the UCDPGED.
+    :param with_date: Logical. If True, it returns parameter values for a model with date information.
+        If False, it returns parameters values for a model without date information.
 
     :return: A list of lists in the form ``[[nu, gamma for the 1st ID], [nu, gamma for the 2nd ID], ...])``.
     """
 
     # load ged summary table
-    ged_param_path = pkg_resources.resource_filename('wzone', 'data/ged_optimal_parameters.pkl')
+    if with_date:
+        ged_param_path = pkg_resources.resource_filename('wzone', 'data/w_date/ged_optimal_parameters.pkl')
+    else:
+        ged_param_path = pkg_resources.resource_filename('wzone', 'data/wo_date/ged_optimal_parameters.pkl')
     with open(ged_param_path, 'rb') as f:
         ged_param_df = pickle.load(f)
 
@@ -284,6 +289,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     """
     A function for creating conflict zones for given dates and conflict IDs.
     :param dates: A string or a list of strings of dates in the format of YYYY-MM-DD (eg. 2000-01-01).
+        It also accepts None to generate time-invariant conflict zones.
     :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
         those in the UCDPGED.
     :param out_dir: A string of a path to an output folder. Conflict zones are saved in the specified directory
@@ -317,19 +323,26 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     if cut <= 0:
         ValueError('cut must be larger than 0.')
 
+    # specify the data directory
+    if dates is not None:
+        data_dir = 'data/w_date/'
+    else:
+        data_dir = 'data/wo_date'
+        dates = [dates]
+
     # load scaler
-    scaler_path = pkg_resources.resource_filename('wzone', 'data/ged_scaler.pkl')
+    scaler_path = pkg_resources.resource_filename('wzone', data_dir + 'ged_scaler.pkl')
     with open(scaler_path, 'rb') as f:
         scaler_dict = pickle.load(f)
 
     # load a dictionary of estimates if ensemble
     if ensemble:
-        osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_osvm_dict.gzip')
+        osvm_est_path = pkg_resources.resource_filename('wzone', data_dir + 'ged_osvm_dict.gzip')
         osvm_est_dict = gzip_pickle.load(osvm_est_path)
 
     # load a light version
     else:
-        osvm_est_path = pkg_resources.resource_filename('wzone', 'data/ged_osvm_dict_light.pkl')
+        osvm_est_path = pkg_resources.resource_filename('wzone', data_dir + 'ged_osvm_dict_light.pkl')
         with open(osvm_est_path, 'rb') as f:
             osvm_est_dict = pickle.load(f)
 
@@ -391,22 +404,25 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
         # loop for each day
         for date in dates:
 
-            # if date is not within a plausible range return
-            if numftime(date) < numftime(first_date):
-                Warning(str(uid) + ': ' + \
-                        str(date) + ' is earlier than the date of the first event (' + str(first_date) + ').')
-            elif numftime(date) > numftime(last_date):
-                Warning(str(uid) + ': ' + \
-                        str(date) + ' is later than the date of the last event (' + str(first_date) + ').')
+            # if dates are specified
+            if date is not None:
 
-            # add the date to df
-            matc_tmp = np.column_stack((matc, np.full((matc.shape[0], 1), numftime(date), int)))
-            matf_tmp = np.column_stack((matf, np.full((matf.shape[0], 1), numftime(date), int)))
+                # if date is not within a plausible range, warnings
+                if numftime(date) < numftime(first_date):
+                    Warning(str(uid) + ': ' + \
+                            str(date) + ' is earlier than the date of the first event (' + str(first_date) + ').')
+                elif numftime(date) > numftime(last_date):
+                    Warning(str(uid) + ': ' + \
+                            str(date) + ' is later than the date of the last event (' + str(first_date) + ').')
+
+                # add the date to df
+                matc_tmp = np.column_stack((matc, np.full((matc.shape[0], 1), numftime(date), int)))
+                matf_tmp = np.column_stack((matf, np.full((matf.shape[0], 1), numftime(date), int)))
 
             # scale the df
             matc_scaled_tmp = scaler_tmp.transform(matc_tmp)
 
-            # first calculate decision values at a coarse level
+            # prediction at a coarse level
             predc_tmp = osvm_ensemble(est_tmp[0], matc_scaled_tmp, cut=cut)
             idxc_tmp = np.where(predc_tmp == 1)[0]
 
