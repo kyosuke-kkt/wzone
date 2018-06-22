@@ -31,11 +31,11 @@ class Testfind_dates(unittest.TestCase):
 class Testcheck_params(unittest.TestCase):
     def test(self):
 
-        # nu and gamma values for Somalia (in-variant)
+        # nu and gamma values for Somalia (time-variant)
         params = wzone.check_params(337, with_date=True)
         self.assertEqual(params, [[0.047148038245961095, 28.401796201000675]])
 
-        # nu and gamma values for Somalia (in-invariant)
+        # nu and gamma values for Somalia (time-invariant)
         params = wzone.check_params(337, with_date=False)
         self.assertEqual(params, [[0.05703923508077811, 93.8623468254216]])
 
@@ -48,8 +48,8 @@ class Testgen_wzones(unittest.TestCase):
 
         # create war zones
         tmp_dir = tempfile.mkdtemp()
-        somalia_path1 = wzone.gen_wzones(dates=test_dates, ids=test_id, out_dir=tmp_dir, save_novalue_raster=True)
-        somalia_path2 = wzone.gen_wzones(dates=None, ids=test_id, out_dir=tmp_dir, save_novalue_raster=False)
+        somalia_path1 = wzone.gen_wzones(dates=test_dates, ids=test_id, out_dir=tmp_dir)
+        somalia_path2 = wzone.gen_wzones(dates=None, ids=test_id, out_dir=tmp_dir)
 
         # check the number of positive predictions
         somalia_mat1 = np.loadtxt(somalia_path1[0], skiprows=6, delimiter=' ', comments='')
