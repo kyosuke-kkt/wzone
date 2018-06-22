@@ -13,10 +13,10 @@ test_id = 337
 test_date = ['2000-01-01', '2010-01-01']
 
 # create war zones for the first conflict ID (only the first year for the purpose of test)
-out_path = wzone.gen_wzones(dates=test_date, ids=337, out_dir='C:/Users/Kyosuke/Desktop')
+out_paths = wzone.gen_wzones(dates=test_date, ids=337, out_dir='C:/Users/Kyosuke/Desktop')
 
 # read and count the number of cells within conflict zones
-out_mat = np.loadtxt(out_path[0], skiprows=6, delimiter=' ', comments='')
+out_mat = np.loadtxt(out_paths[0], skiprows=6, delimiter=' ', comments='')
 print out_mat.shape
 print out_mat.sum()
 

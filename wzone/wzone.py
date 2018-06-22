@@ -27,6 +27,8 @@ def numftime(d, format = '%Y-%m-%d'):
 # check data types
 def format(data, dtype, make_list = True):
 
+    """A function that transform dates to integers."""
+
     # if d is not none
     if data is not None:
 
@@ -212,6 +214,10 @@ def check_params(ids, with_date = True):
     # check and format the ids input
     ids = format(ids, int)
 
+    # check with_date
+    if not isinstance(with_date, bool):
+        TypeError('with_date must be a boolean.')
+
     # check if all IDs are valid
     valid_ids = [i for i in ids if i in ged_param_df['id'].tolist()]
     if len(valid_ids) == 0:
@@ -250,6 +256,12 @@ def find_dates(ids, interval = None):
 
     # check and format the ids input
     ids = format(ids, int)
+
+    # check the format of interval
+    if isinstance(interval, (type(None), str)):
+        TypeError('interval must be None or a string.')
+    if interval not in ['day', 'week', 'month', 'quarter', 'year']:
+        ValueError("interval must be either 'day', 'week', 'month', 'quarter', or 'year'")
 
     # get a array of first and last dates
     date_list = ged_sum_df.loc[ged_sum_df['id'].isin(ids), ['date_start', 'date_end']].values.tolist()
@@ -317,6 +329,19 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     dates = format(dates, str)
     ids = format(ids, int)
     cut = format(cut, float, make_list=False)
+
+    # check out_dir
+    if not isinstance(out_dir, str):
+        TypeError('out_dir must be a string.')
+    if not os.path.exists(out_dir):
+        ValueError('out_dir does not exist.')
+
+    # check boolean arguments
+    if not isinstance(save_novalue_raster, bool):
+        TypeError('save_novalue_raster must be a boolean.')
+    if not isinstance(ensemble, bool):
+        TypeError('ensemble must be a boolean.')
+
 
     # check cut
     if cut >= float(1):
