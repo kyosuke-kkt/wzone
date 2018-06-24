@@ -1,6 +1,7 @@
 
 # python 2.7 default packages
 import os
+import gzip
 import cPickle as pickle
 import datetime
 import calendar
@@ -13,7 +14,19 @@ import pandas as pd
 from sklearn import svm
 from sklearn import preprocessing
 
-import gzip_pickle
+def gpickle_load(filename):
+    """Loads a compressed object from disk
+    """
+    file = gzip.GzipFile(filename, 'rb')
+    buffer = ""
+    while True:
+        data = file.read()
+        if data == "":
+            break
+        buffer += data
+    object = pickle.loads(buffer)
+    file.close()
+    return object
 
 # convert date string to numeric
 def numftime(d, format = '%Y-%m-%d'):
@@ -364,7 +377,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     # load a dictionary of estimates if ensemble
     if ensemble:
         osvm_est_path = pkg_resources.resource_filename('wzone', data_dir + 'ged_osvm_dict.gzip')
-        osvm_est_dict = gzip_pickle.load(osvm_est_path)
+        osvm_est_dict = gpickle_load(osvm_est_path)
 
     # load a light version
     else:

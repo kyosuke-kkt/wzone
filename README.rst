@@ -22,7 +22,7 @@ An Example
 
 .. code-block:: python
 
-    from wzone import wzone
+    import wzone
     import tempfile
 
     # list of UCDPGED conflict IDs relevant to state-based violence in Somalia

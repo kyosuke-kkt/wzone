@@ -5,7 +5,7 @@ with open('README.rst') as f:
     readme = f.read()
 
 setup(name = 'wzone',
-      version = '0.1.4',
+      version = '0.1.8',
       description = 'Package for making zones of armed conflicts.',
       long_description = readme,
       long_description_content_type = 'text/x-rst',
@@ -14,6 +14,7 @@ setup(name = 'wzone',
       author_email='kyosuke.kkt@outlook.com',
       license='MIT',
       packages=['wzone'],
+      include_package_data=True,
       package_data={'wzone': ['data/*.pkl',
                               'data/w_date/*.pkl', 'data/w_date/*.gzip',
                               'data/wo_date/*.pkl', 'data/wo_date/*.gzip']},

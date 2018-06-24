@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import numpy as np
 
-from wzone import wzone
+import wzone
 
 class Testfind_ids(unittest.TestCase):
     def test(self):

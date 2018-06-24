@@ -1,5 +1,5 @@
 
-from wzone import wzone
+import wzone
 import numpy as np
 
 # list of UCDPGED conflict IDs relevant to state-based violence in Somalia

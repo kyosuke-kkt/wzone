@@ -1,5 +1,5 @@
 
-from wzone import wzone
+import wzone
 import tempfile
 import shutil
 import cProfile
