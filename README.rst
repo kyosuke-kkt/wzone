@@ -48,7 +48,7 @@ Links
 -----
 
 * Website: https://github.com/kyosuke-kkt/wzone/
-* License: `MIT <https://github.com/kyosuke-kkt/wzone/blob/master/LICENSE>`_
+* License: `GPL-3 <https://github.com/kyosuke-kkt/wzone/blob/master/LICENSE>`_
 * Releases: https://pypi.org/project/wzone/
 
 .. _ESRI ASCII raster format: \
