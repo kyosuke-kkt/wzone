@@ -5,7 +5,7 @@ with open('README.rst') as f:
     readme = f.read()
 
 setup(name = 'wzone',
-      version = '0.1.8',
+      version = '0.1.9',
       description = 'Package for making zones of armed conflicts.',
       long_description = readme,
       long_description_content_type = 'text/x-rst',
