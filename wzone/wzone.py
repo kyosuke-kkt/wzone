@@ -460,7 +460,10 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
             matc_scaled_tmp = scaler_tmp.transform(matc_tmp)
 
             # prediction at a coarse level
-            predc_tmp = osvm_ensemble(est_tmp[0], matc_scaled_tmp, cut=cut)
+            if not ensemble:
+                predc_tmp = osvm_ensemble(est_tmp[0], matc_scaled_tmp)
+            else:
+                predc_tmp = osvm_ensemble(est_tmp, matc_scaled_tmp, cut=cut)
             idxc_tmp = np.where(predc_tmp == 1)[0]
 
             # specify the output path
