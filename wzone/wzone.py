@@ -79,21 +79,21 @@ def write_asc(array, out_path, ncols, nrows, xllcenter, yllcenter, cellsize, nod
     np.savetxt(out_path, array, fmt=fmt, delimiter=' ', header=txt_header, comments='')
 
 # make a prediction based on the outcome of ensemble_osvm
-def osvm_ensemble(osvm_list, mat, cut = 0.5):
+def osvm_ensemble(osvm_list, mat, z_val = 0):
 
     """
     A function that ensembles predictions of multiple OC-SVM models (intended for internal use).
     :param osvm_list: A list of precompiled sklearn.svm.OneClassSVM classes. For details of svm.OneClassSVM refer
                       to sklearn documentation.
     :param mat: A 2-dimensional numpy array (row: observations, column: variables).
-    :param cut: A float between 0.0 and 1.0. If equal or more than this proportion of models make positive predictions,
-                the ensemble prediction is positive.
+    :param z_val: A float corresponding to the Z score. z_val = 0 for mean estimate, 1.96 for upper, -1.96 for lower
+                  estimate.
 
     :return: A list of predicted values (1 for positive and 0 for negative prediction).
     """
 
     # create a list that saves the predictions
-    pred_list = []
+    dec_list = []
 
     # if not an instance of a list
     if not isinstance(osvm_list, list):
@@ -102,21 +102,37 @@ def osvm_ensemble(osvm_list, mat, cut = 0.5):
     # loop for each estimator
     for osvm in osvm_list:
 
-        # make a prediction
-        pred_tmp = osvm.predict(mat)
+        # unlist
+        if isinstance(osvm, list):
+            osvm = osvm[0]
 
-        # change to 0 and 1
-        pred_tmp = (np.array(pred_tmp) + 1) / 2
+        # make a prediction
+        dec_tmp = osvm.decision_function(mat)
 
         # append
-        pred_list.append(pred_tmp)
+        dec_list.append(dec_tmp)
 
-    # majority votes
-    if len(pred_list) > 1:
-        votes = list(sum(map(np.array, pred_list)))
-        out = 1*np.array([v >= cut*float(len(osvm_list)) for v in votes])
+    # ensemble
+    if len(dec_list) > 1:
+
+        # mean and sd of the decision values for each cell  (the sd is bootstrap se)
+        dec_mean = np.mean(dec_list, axis=0)
+        dec_se = np.std(dec_list, axis=0, ddof=1)
+
+        # fill nan (no-variance cases)
+        dec_se[np.isnan(dec_se)] = 0.0
+
+        # normal approximation
+        dec_ens = dec_mean + z_val * dec_se
+
+        # prediction
+        out = dec_ens >= 0
+        out = 1*out
+
+    # if only one estimate is provided, no ensemble
     else:
-        out = pred_list[0]
+        out = dec_list[0] >= 0
+        out = 1*out
 
     # return
     return out
@@ -152,8 +168,9 @@ def find_ids(country = None, country_id = None, date_from = None, date_to = None
 
     # load ged summary table
     ged_summary_path = pkg_resources.resource_filename('wzone', 'data/ged_summary.pkl')
-    with open(ged_summary_path, 'rb') as f:
-        ged_sum_df = pickle.load(f)
+    ###with open(ged_summary_path, 'rb') as f:
+    ###    ged_sum_df = pickle.load(f)
+    ged_sum_df = pd.read_pickle(ged_summary_path)
 
     # check and format data types
     country = format(country, str)
@@ -221,8 +238,9 @@ def check_params(ids, with_date = True):
         ged_param_path = pkg_resources.resource_filename('wzone', 'data/w_date/ged_optimal_parameters.pkl')
     else:
         ged_param_path = pkg_resources.resource_filename('wzone', 'data/wo_date/ged_optimal_parameters.pkl')
-    with open(ged_param_path, 'rb') as f:
-        ged_param_df = pickle.load(f)
+    ###with open(ged_param_path, 'rb') as f:
+    ###    ged_param_df = pickle.load(f)
+    ged_param_df = pd.read_pickle(ged_param_path)
 
     # check and format the ids input
     ids = format(ids, int)
@@ -264,8 +282,9 @@ def find_dates(ids, interval = None):
 
     # load ged summary table
     ged_summary_path = pkg_resources.resource_filename('wzone', 'data/ged_summary.pkl')
-    with open(ged_summary_path, 'rb') as f:
-        ged_sum_df = pickle.load(f)
+    ###with open(ged_summary_path, 'rb') as f:
+    ###    ged_sum_df = pickle.load(f)
+    ged_sum_df = pd.read_pickle(ged_summary_path)
 
     # check and format the ids input
     ids = format(ids, int)
@@ -309,7 +328,7 @@ def find_dates(ids, interval = None):
     return out_list
 
 # wrapper for making a raster given conflict id and date
-def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = False, cut = 0.5):
+def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = False, n_resample = 10, z_val = 0):
 
     """
     A function for creating conflict zones for given dates and conflict IDs.
@@ -318,16 +337,15 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     :param ids: An integer or a list of integers of the UCDPGED conflict IDs. The conflict IDs must be consistent with
         those in the UCDPGED.
     :param out_dir: A string of a path to an output folder. Conflict zones are saved in the specified directory
-        as the ESRI ASCII raster format.
+        in an ESRI ASCII raster format.
     :param save_novalue_raster: Logical. If False, no raster outputs are saved when there is no conflict zone.
         If True, zero-valued raster files (3600-by-1800) are created and saved when there is no conflict zone.
         Use this option sparingly as the zero-valued raster files are large and slow down the process.
     :param ensemble: Logical. If True, it uses bootstrapping ensemble. The ensemble slows down the data generation.
         Recommended only if cut is not 0.5.
-    :param cut: A float between 0.0 and 1.0. Valid only when ensemble = True. If equal or more than this proportion
-        of bootstrapped models make positive predictions, the location is considered as a part of a war zone.
-        cut = 0.025 gives the 95% lower bootstrapping bound of war zone estimates. cut = 0.975 gives the 95%
-        upper bootstrapping bound of war zone estimates.
+    :param n_resample: Integer. The number of resamples for ensembling. Must be an odd number of 101 or less.
+    :param z_val: A float corresponding to the Z score. z_val = 0 for mean estimate, 1.96 for upper, -1.96 for lower
+                  estimate.
 
     :return: A list of paths at which the output ESRI ASCII raster files are saved.
         The output file names are in a format of '[ConflictID]_[Date].asc'.
@@ -341,7 +359,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     # check and format inputs
     dates = format(dates, str)
     ids = format(ids, int)
-    cut = format(cut, float, make_list=False)
+    z_val = format(z_val, float, make_list=False)
 
     # check out_dir
     if not isinstance(out_dir, str):
@@ -355,12 +373,16 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
     if not isinstance(ensemble, bool):
         TypeError('ensemble must be a boolean.')
 
+    # if n_resample is even
+    n_resample = int(n_resample)
+    ###if n_resample % 2 == 0:
+    ###    ValueError('n_resample must be odd number.')
 
-    # check cut
-    if cut >= float(1):
-        ValueError('cut must be less than 1.')
-    if cut <= 0:
-        ValueError('cut must be larger than 0.')
+    # check n_resample
+    if n_resample > 101:
+        ValueError('n_resample must be 101 or less.')
+    if n_resample < 0:
+        ValueError('n_resample must be positive.')
 
     # specify the data directory
     if dates is not None:
@@ -387,8 +409,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
 
     # load ged summary table
     ged_summary_path = pkg_resources.resource_filename('wzone', 'data/ged_summary.pkl')
-    with open(ged_summary_path, 'rb') as f:
-        ged_sum_df = pickle.load(f)
+    ged_sum_df = pd.read_pickle(ged_summary_path)
 
     # check whether the IDs are valid
     valid_ids = [i for i in ids if i in list(osvm_est_dict.keys())]
@@ -463,7 +484,7 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
             if not ensemble:
                 predc_tmp = osvm_ensemble(est_tmp[0], matc_scaled_tmp)
             else:
-                predc_tmp = osvm_ensemble(est_tmp, matc_scaled_tmp, cut=cut)
+                predc_tmp = osvm_ensemble(est_tmp[0:n_resample], matc_scaled_tmp, z_val=z_val)
             idxc_tmp = np.where(predc_tmp == 1)[0]
 
             # specify the output path
@@ -489,7 +510,10 @@ def gen_wzones(dates, ids, out_dir, save_novalue_raster = False, ensemble = Fals
                 matf_scaled_tmp = scaler_tmp.transform(matf_tmp)
 
                 # make a prediction at a finer level
-                predf_tmp = osvm_ensemble(est_tmp, matf_scaled_tmp, cut=cut)
+                if not ensemble:
+                    predf_tmp = osvm_ensemble(est_tmp[0], matf_scaled_tmp)
+                else:
+                    predf_tmp = osvm_ensemble(est_tmp[0:n_resample], matf_scaled_tmp, z_val=z_val)
 
                 # make a matrix of the predicted values
                 ncols_tmp = len(longf_tmp)
