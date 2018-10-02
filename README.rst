@@ -38,7 +38,7 @@ An Example
     # create war zones
     tmp_dir = tempfile.mkdtemp()
     somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)
-    print tmp_dir
+    print somalia_path
 
     # You can continue this example with a variety of functions in other GIS packages.
     ### For arcpy users, refer to arcpy.ASCIIToRaster_conversion function.
