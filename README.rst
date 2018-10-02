@@ -49,7 +49,6 @@ Links
 
 * Website: https://github.com/kyosuke-kkt/wzone/
 * License: `GPL-3 <https://github.com/kyosuke-kkt/wzone/blob/master/LICENSE>`_
-* Releases: https://pypi.org/project/wzone/
 
 .. _ESRI ASCII raster format: \
     http://resources.esri.com/help/9.3/arcgisdesktop/com/gp_toolref/spatial_analyst_tools/esri_ascii_raster_format.htm
