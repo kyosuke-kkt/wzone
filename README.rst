@@ -3,8 +3,8 @@ Wzone
 
 Wzone is a package for generating zones of armed conflicts. The package contains functionalities 
 for querying and creating conflict zones in the `ESRI ASCII raster format`_. The methodological details
-can be found `here`_ (TBD). The package greatly relies on the UCDPGED (version 17.1) compiled by
-the `Uppsala Conflict Data Program`_.
+can be found `here`_. The output conflict zones (ESRI shape file format) and time lapse video are available at the `Harvard Dataverse`_ and `Youtube`_.
+The package greatly relies on the UCDPGED (version 17.1) compiled by the `Uppsala Conflict Data Program`_.
 
 
 Installing
@@ -14,7 +14,7 @@ Install and update using `pip`_:
 
 .. code-block:: text
 
-    pip install wzone
+    pip install git+https://github.com/kyosuke-kkt/wzone.git
 
 
 An Example
@@ -38,7 +38,7 @@ An Example
     # create war zones
     tmp_dir = tempfile.mkdtemp()
     somalia_path = wzone.gen_wzones(dates=test_date, ids=test_id, out_dir=tmp_dir)
-    print tmp_dir
+    print somalia_path
 
     # You can continue this example with a variety of functions in other GIS packages.
     ### For arcpy users, refer to arcpy.ASCIIToRaster_conversion function.
@@ -49,10 +49,11 @@ Links
 
 * Website: https://github.com/kyosuke-kkt/wzone/
 * License: `GPL-3 <https://github.com/kyosuke-kkt/wzone/blob/master/LICENSE>`_
-* Releases: https://pypi.org/project/wzone/
 
 .. _ESRI ASCII raster format: \
     http://resources.esri.com/help/9.3/arcgisdesktop/com/gp_toolref/spatial_analyst_tools/esri_ascii_raster_format.htm
-.. _here: aa//
+.. _here: https://www.academia.edu/37558768/A_New_Geography_of_Civil_War_A_Machine_Learning_Approach_to_Measuring_the_Zones_of_Armed_Conflicts
+.. _Harvard Dataverse: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/PUWJEU
+.. _Youtube: https://www.youtube.com/watch?v=GIp3olV9ILE
 .. _Uppsala Conflict Data Program: http://ucdp.uu.se/
 .. _pip: https://pip.pypa.io/en/stable/quickstart/
